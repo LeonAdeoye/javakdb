@@ -465,19 +465,20 @@ public class Connection
    * q tables are column-oriented, in contrast to the row-oriented tables in relational databases.
    * An introduction can be found at <a href="https://code.kx.com/q4m3/8_Tables/">https://code.kx.com/q4m3/8_Tables/</a>
    */
-  public static class Flip{
+  public static class Result
+  {
     /** Array of column names. */
-    public String[] x;
+    public String[] columnNames;
     /** Array of arrays of the column values. */
-    public Object[] y;
+    public Object[] columnValuesArrayOfArray;
     /**
      * Create a Flip (KDB+ table) from the values stored in a Dict.
      * @param dict Values stored in the dict should be an array of Strings for the column names (keys), with an 
      * array of arrays for the column values
      */
-    public Flip(Dict dict){
-      x=(String[])dict.x;
-      y=(Object[])dict.y;
+    public Result(Dict dict){
+      columnNames =(String[])dict.x;
+      columnValuesArrayOfArray =(Object[])dict.y;
     }
     /**
      * Returns the column values given the column name
@@ -485,7 +486,7 @@ public class Connection
      * @return The value(s) associated with the column name which can be casted to an array of objects.
      */
     public Object at(String s){
-      return y[find(x,s)];
+      return columnValuesArrayOfArray[find(columnNames,s)];
     }
   }
   /**
@@ -975,7 +976,7 @@ public class Connection
       return new Dict(r(),r());
     rBuffPos++;
     if(t==98)
-      return new Flip((Dict)r());
+      return new Result((Dict)r());
     n=ri();
     switch(t){
       case 0:
@@ -1159,7 +1160,7 @@ public class Connection
       return 17;
     if (x instanceof Second[])
       return 18;
-    if (x instanceof Flip)
+    if (x instanceof Result)
       return 98;
     if (x instanceof Dict)
       return 99;
@@ -1195,8 +1196,8 @@ public class Connection
   public static int n(final Object x) throws UnsupportedEncodingException{
     if (x instanceof Dict)
       return n(((Dict)x).x);
-    if (x instanceof Flip)
-      return n(((Flip)x).y[0]);
+    if (x instanceof Result)
+      return n(((Result)x).columnValuesArrayOfArray[0]);
     return x instanceof char[]?new String((char[])x).getBytes(encoding).length:Array.getLength(x);
   }
   /**
@@ -1210,7 +1211,7 @@ public class Connection
     if(type==99)
       return 1+nx(((Dict)x).x)+nx(((Dict)x).y);
     if(type==98)
-      return 3+nx(((Flip)x).x)+nx(((Flip)x).y);
+      return 3+nx(((Result)x).columnNames)+nx(((Result)x).columnValuesArrayOfArray);
     if(type<0)
       return type==-11?2+ns((String)x):1+nt[-type];
     int numBytes=6;
@@ -1297,10 +1298,10 @@ public class Connection
     }
     wBuff[wBuffPos++]=0;
     if(type==98){
-      Flip r=(Flip)x;
+      Result r=(Result)x;
       wBuff[wBuffPos++]=99;
-      w(r.x);
-      w(r.y);
+      w(r.columnNames);
+      w(r.columnValuesArrayOfArray);
       return;
     }
     n=n(x);
@@ -1532,7 +1533,7 @@ public class Connection
    * @throws IOException if an I/O error occurs.
    * @throws UnsupportedEncodingException If the named charset is not supported
    */
-  public Object k() throws KException,IOException,UnsupportedEncodingException{
+  public Object invoke() throws KException,IOException,UnsupportedEncodingException{
     return readMsg()[1];
   }
   /**
@@ -1596,7 +1597,7 @@ public class Connection
    * @throws KException if request evaluation resulted in an error
    * @throws IOException if an I/O error occurs.
    */
-  public synchronized Object k(Object x) throws KException,IOException{
+  public synchronized Object invoke(Object x) throws KException,IOException{
     w(1,x);
     if(collectResponseAsync)
       return null;
@@ -1615,8 +1616,8 @@ public class Connection
    * @throws KException if request evaluation resulted in an error
    * @throws IOException if an I/O error occurs.
    */
-  public Object k(String expr) throws KException,IOException{
-    return k(expr.toCharArray());
+  public Object invoke(String expr) throws KException,IOException{
+    return invoke(expr.toCharArray());
   }
   /**
    * Sends a sync message to the remote kdb+ process. This blocks until the message has been sent in full, and a message
@@ -1629,9 +1630,9 @@ public class Connection
    * @throws KException if request evaluation resulted in an error
    * @throws IOException if an I/O error occurs.
    */
-  public Object k(String s,Object x) throws KException,IOException{
+  public Object invoke(String s, Object x) throws KException,IOException{
     Object[] a={s.toCharArray(),x};
-    return k(a);
+    return invoke(a);
   }
   /**
    * Sends a sync message to the remote kdb+ process. This blocks until the message has been sent in full, and a message
@@ -1645,9 +1646,9 @@ public class Connection
    * @throws KException if request evaluation resulted in an error
    * @throws IOException if an I/O error occurs.
    */
-  public Object k(String s,Object x,Object y) throws KException,IOException{
+  public Object invoke(String s, Object x, Object y) throws KException,IOException{
     Object[] a={s.toCharArray(),x,y};
-    return k(a);
+    return invoke(a);
   }
   /**
    * Sends a sync message to the remote kdb+ process. This blocks until the message has been sent in full, and a message
@@ -1662,9 +1663,9 @@ public class Connection
    * @throws KException if request evaluation resulted in an error
    * @throws IOException if an I/O error occurs.
    */
-  public Object k(String s,Object x,Object y,Object z) throws KException,IOException{
+  public Object invoke(String s, Object x, Object y, Object z) throws KException,IOException{
     Object[] a={s.toCharArray(),x,y,z};
-    return k(a);
+    return invoke(a);
   }
   /** 
    * Array containing the null object representation for corresponing kdb+ type number (0-19).&nbsp;
@@ -1737,21 +1738,21 @@ public class Connection
    * @return A simple table
    * @throws UnsupportedEncodingException If the named charset is not supported
    */
-  public static Flip td(Object tbl) throws UnsupportedEncodingException{
-    if(tbl instanceof Flip)
-      return (Flip)tbl;
+  public static Result td(Object tbl) throws UnsupportedEncodingException{
+    if(tbl instanceof Result)
+      return (Result)tbl;
     Dict d=(Dict)tbl;
-    Flip a=(Flip)d.x;
-    Flip b=(Flip)d.y;
-    int m=n(a.x);
-    int n=n(b.x);
+    Result a=(Result)d.x;
+    Result b=(Result)d.y;
+    int m=n(a.columnNames);
+    int n=n(b.columnNames);
     String[] x=new String[m+n];
-    System.arraycopy(a.x,0,x,0,m);
-    System.arraycopy(b.x,0,x,m,n);
+    System.arraycopy(a.columnNames,0,x,0,m);
+    System.arraycopy(b.columnNames,0,x,m,n);
     Object[] y=new Object[m+n];
-    System.arraycopy(a.y,0,y,0,m);
-    System.arraycopy(b.y,0,y,m,n);
-    return new Flip(new Dict(x,y));
+    System.arraycopy(a.columnValuesArrayOfArray,0,y,0,m);
+    System.arraycopy(b.columnValuesArrayOfArray,0,y,m,n);
+    return new Result(new Dict(x,y));
   }
   /** 
    * @deprecated Prints x to {@code out} stream 
