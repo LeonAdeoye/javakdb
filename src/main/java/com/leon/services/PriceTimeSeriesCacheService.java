@@ -1,27 +1,44 @@
 package com.leon.services;
 
+import com.leon.model.PricePoint;
 import kx.Connection;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
 import java.io.IOException;
 import java.sql.Date;
+import java.util.ArrayList;
+import java.util.List;
 
+@Service
 public class PriceTimeSeriesCacheService
 {
-	static String username = "adeoyel";
-	static String password = "password";
-	static int port = 8080;
-	static String host = "localhost";
+	@Value("${kdb.username}")
+	String username;
 
-	public static void main(String[] args) throws IOException
+	@Value("${kdb.password}")
+	String password;
+
+	@Value("${kdb.port}")
+	int port = 8080;
+
+	@Value("${kdb.hostname}")
+	String host = "localhost";
+
+	public List<PricePoint> getPrices(String symbol)
 	{
 		Connection connection = null;
+		List<PricePoint> pricePoints = new ArrayList<>();
 
 		try
 		{
 			connection = new Connection(host, port, username + ":" + password, false);
+
+			// TODO Convert into getPrices parameters
 			String[] snapTime = new String[] {"13:30:00.000", "13:30:18.7555"};
 			Date[] snapDate = new Date[] {Date.valueOf("2022-03-01"), Date.valueOf("2022-03-01")};
 			String[] symbols = new String[] {"ETC", "BTC"};
 			String[] columns = new String[] {"bid", "ask"};
+
 			Connection.Dict dictionary = new Connection.Dict(new String[] {"symbols", "snapDate", "snapTime", "columns"}, new Object[] { symbols, snapDate, snapTime, columns});
 			Connection.Result result = (Connection.Result) connection.invoke("getPrices", dictionary);
 			int symbolIndex = 0, dateIndex = 0, timeIndex = 0, bidIndex = 0, askIndex = 0, highIndex = 0, lowIndex = 0, closeIndex = 0, openIndex = 0;
@@ -66,20 +83,29 @@ public class PriceTimeSeriesCacheService
 				System.out.println(String.format("Symbol: %s, date: %s, time: %s, ask: %f, bid: %f, close: %f, open:%f, high:%f, low:%f",
 						symbolValues[index], dateValues[index].toString(), timespan.toString(), askValues[index],
 						bidValues[index], closeValues[index], openValues[index], highValues[index], lowValues[index]));
+
+				PricePoint pricePoint = new PricePoint();
 			}
 		}
 		catch(Connection.KException ke)
 		{
 			ke.printStackTrace();
 		}
+		catch(IOException ioe)
+		{
+			ioe.printStackTrace();
+		}
 		finally
 		{
-			connection.close();
+			try
+			{
+				connection.close();
+			}
+			catch(IOException ioe)
+			{
+				ioe.printStackTrace();
+			}
+			return pricePoints;
 		}
-	}
-
-	public String getPrices(String symbol)
-	{
-		return "{}";
 	}
 }

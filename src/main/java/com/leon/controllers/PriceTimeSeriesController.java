@@ -38,7 +38,7 @@ public class PriceTimeSeriesController
 		}
 
 		logger.info(String.format("Received request to prices of symbol: %s", request.getSymbol()));
-		return priceTimeSeriesCacheService.getPrices(request.getSymbol());
+		return priceTimeSeriesCacheService.getPrices(request.getSymbol()).toString();
 	}
 }
 
