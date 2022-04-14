@@ -4,7 +4,7 @@ import kx.Connection;
 import java.io.IOException;
 import java.sql.Date;
 
-public class PriceTimeSeriesService
+public class PriceTimeSeriesCacheService
 {
 	static String username = "adeoyel";
 	static String password = "password";
@@ -76,5 +76,10 @@ public class PriceTimeSeriesService
 		{
 			connection.close();
 		}
+	}
+
+	public String getPrices(String symbol)
+	{
+		return "{}";
 	}
 }
