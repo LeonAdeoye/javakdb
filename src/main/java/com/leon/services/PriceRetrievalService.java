@@ -97,6 +97,8 @@ public class PriceRetrievalService
 		}
 	}
 
+	// Aggregated result sets returned by KDB contain both key values and data values in the same table so
+	// that you either need to use dictionary to traverse the result set or you prefix your query with 0!
 	public List<PriceAggregation> getAggregates()
 	{
 		Connection connection = null;
