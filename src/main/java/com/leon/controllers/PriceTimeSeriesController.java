@@ -24,8 +24,7 @@ public class PriceTimeSeriesController
 	@RequestMapping("/heartbeat")
 	String heartbeat()
 	{
-		return PriceRetrievalService.getAggregates().toString();
-//		return "Here I am!";
+		return "Here I am!";
 	}
 
 	@CrossOrigin
