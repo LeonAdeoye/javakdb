@@ -1,5 +1,6 @@
 package com.leon.services;
 
+import com.leon.model.PriceAggregation;
 import com.leon.model.PricePoint;
 import kx.Connection;
 import org.slf4j.Logger;
@@ -8,13 +9,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 @Service
-public class PriceTimeSeriesCacheService
+public class PriceRetrievalService
 {
-	private static final Logger logger = LoggerFactory.getLogger(PriceTimeSeriesCacheService.class);
+	private static final Logger logger = LoggerFactory.getLogger(PriceRetrievalService.class);
 
 	@Value("${kdb.aggregate.query}")
 	String aggregate_query;
@@ -66,10 +66,10 @@ public class PriceTimeSeriesCacheService
 			java.sql.Time[] timeValues = (java.sql.Time[]) result.columnValuesArrayOfArray[timeIndex];
 			long[] quantityValues = (long[]) result.columnValuesArrayOfArray[quantityIndex];
 
-			logger.info("The first ten prices retrieved from KDB...");
+			logger.info("The first five prices retrieved from KDB...");
 			for(int index = 0; index < symbolValues.length; ++index)
 			{
-				if(index <= 10)
+				if(index < 5)
 				logger.info(String.format("Symbol: %s, date: %s, price: %d, time:%s, quantity:%d",
 						symbolValues[index], dateValues[index].toString(), priceValues[index], timeValues[index], quantityValues[index]));
 
@@ -87,7 +87,7 @@ public class PriceTimeSeriesCacheService
 			try
 			{
 				connection.close();
-				logger.info("Closed connection after executing query: " + price_query);
+				logger.info("Closed connection after a total of " + pricePoints.size() + " record(s) were returned from KDB by executing the query:\n" + price_query);
 			}
 			catch(IOException ioe)
 			{
@@ -97,45 +97,62 @@ public class PriceTimeSeriesCacheService
 		}
 	}
 
-	public List<PricePoint> getAggregates()
+	public List<PriceAggregation> getAggregates()
 	{
 		Connection connection = null;
-		List<PricePoint> pricePoints = new ArrayList<>();
-
+		List<PriceAggregation> priceAggregations = new ArrayList<>();
 		try
 		{
 			connection = new Connection(host, port, username + ":" + password, false);
 			logger.info(String.format("Connecting to %s on port: %d using username: %s and password: %s", host, port, username, password));
 			logger.info(String.format("Executing query: %s", aggregate_query));
 
-			final Object res = connection.invoke(aggregate_query);
-			if (res instanceof Connection.Dict)
+			final Object dictionary = connection.invoke(aggregate_query);
+			if (dictionary instanceof Connection.Dictionary)
 			{
-				final Connection.Dict dict = (Connection.Dict) res;
-				if ((dict.x instanceof Connection.Result) && (dict.y instanceof Connection.Result))
+				final Connection.Dictionary dict = (Connection.Dictionary) dictionary;
+				if ((dict.keys instanceof Connection.Result) && (dict.values instanceof Connection.Result))
 				{
-					int symbolIndex = 0, dateIndex = 0, highIndex = 0, lowIndex = 0, closeIndex = 0, openIndex = 0;
-					String[] keyNames = ((Connection.Result) dict.x).columnNames;
+					int symbolIndex = 0, dateIndex = 0;
+					String[] keyNames = ((Connection.Result) dict.keys).columnNames;
 					for(int columnIndex = 0; columnIndex < keyNames.length; ++columnIndex)
 					{
 						if(keyNames[columnIndex].equalsIgnoreCase("dates"))
 							dateIndex = columnIndex;
 						else if (keyNames[columnIndex].equalsIgnoreCase("symbols"))
 							symbolIndex = columnIndex;
-
-						logger.info("column names: " + keyNames[columnIndex] + ", dateIndex: " + dateIndex + ", symbolIndex: " + symbolIndex);
 					}
 
-					String[] symbolValues = (String[]) ((Connection.Result) dict.x).columnValuesArrayOfArray[symbolIndex];
-					Arrays.stream(symbolValues).forEach(logger::info);
-					Object[] dateValues = (Object[]) ((Connection.Result) dict.x).columnValuesArrayOfArray[dateIndex];
-					Arrays.stream(dateValues).forEach(x -> logger.info(String.valueOf(x)));
-
-
-					String[] dataNames = ((Connection.Result) dict.y).columnNames;
+					int highIndex = 0, lowIndex = 0, closeIndex = 0, openIndex = 0;
+					String[] dataNames = ((Connection.Result) dict.values).columnNames;
 					for(int columnIndex = 0; columnIndex < dataNames.length; ++columnIndex)
 					{
-						// TODO
+						if(dataNames[columnIndex].equalsIgnoreCase("high"))
+							highIndex = columnIndex;
+						else if (dataNames[columnIndex].equalsIgnoreCase("low"))
+							lowIndex = columnIndex;
+						else if (dataNames[columnIndex].equalsIgnoreCase("open"))
+							openIndex = columnIndex;
+						else if (dataNames[columnIndex].equalsIgnoreCase("close"))
+							closeIndex = columnIndex;
+					}
+
+					String[] symbolValues = (String[]) ((Connection.Result) dict.keys).columnValuesArrayOfArray[symbolIndex];
+					Object[] dateValues = (Object[]) ((Connection.Result) dict.keys).columnValuesArrayOfArray[dateIndex];
+					long[] highValues = (long[]) ((Connection.Result) dict.values).columnValuesArrayOfArray[highIndex];
+					long[] lowValues = (long[]) ((Connection.Result) dict.values).columnValuesArrayOfArray[lowIndex];
+					long[] closeValues = (long[]) ((Connection.Result) dict.values).columnValuesArrayOfArray[closeIndex];
+					long[] openValues = (long[]) ((Connection.Result) dict.values).columnValuesArrayOfArray[openIndex];
+
+					logger.info("The first five aggregated prices retrieved from KDB...");
+					for(int index = 0; index < highValues.length; ++index)
+					{
+						if(index < 5)
+							logger.info(String.format("Symbol: %s, date: %s, high: %d, low:%d, close:%d, open:%d",
+									symbolValues[index], dateValues[index].toString(), highValues[index], lowValues[index], closeValues[index], openValues[index]));
+
+						priceAggregations.add(new PriceAggregation(highValues[index], lowValues[index],
+								closeValues[index], openValues[index], symbolValues[index], dateValues[index].toString()));
 					}
 				}
 			}
@@ -150,13 +167,13 @@ public class PriceTimeSeriesCacheService
 			try
 			{
 				connection.close();
-				logger.info("Closed connection after executing query: " + aggregate_query);
+				logger.info("Closed connection after a total of " + priceAggregations.size() + " record(s) were returned from KDB by executing the query:\n" + aggregate_query);
 			}
 			catch(IOException ioe)
 			{
 				ioe.printStackTrace();
 			}
-			return pricePoints;
+			return priceAggregations;
 		}
 	}
 }

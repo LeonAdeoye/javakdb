@@ -1,7 +1,7 @@
 package com.leon.controllers;
 
 import com.leon.model.TimeSeriesRequest;
-import com.leon.services.PriceTimeSeriesCacheService;
+import com.leon.services.PriceRetrievalService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,14 +18,13 @@ public class PriceTimeSeriesController
 {
 	private static final Logger logger = LoggerFactory.getLogger(PriceTimeSeriesController.class);
 	@Autowired
-	PriceTimeSeriesCacheService priceTimeSeriesCacheService;
+	PriceRetrievalService PriceRetrievalService;
 
 	@CrossOrigin
 	@RequestMapping("/heartbeat")
 	String heartbeat()
 	{
-		return priceTimeSeriesCacheService.getPrices().toString();
-//		return priceTimeSeriesCacheService.getAggregates().toString();
+		return PriceRetrievalService.getAggregates().toString();
 //		return "Here I am!";
 	}
 
@@ -37,7 +36,7 @@ public class PriceTimeSeriesController
 			logger.error("Time series price request's symbol cannot be null or an empty string.");
 
 		logger.info(String.format("Received request for time series prices of symbol: %s", request.getSymbol()));
-		return priceTimeSeriesCacheService.getPrices().toString();
+		return PriceRetrievalService.getPrices().toString();
 	}
 
 	@CrossOrigin
@@ -48,7 +47,7 @@ public class PriceTimeSeriesController
 			logger.error("Time series aggregation request's symbol cannot be null or an empty string.");
 
 		logger.info(String.format("Received request to aggregate prices for symbol: %s", request.getSymbol()));
-		return priceTimeSeriesCacheService.getAggregates().toString();
+		return PriceRetrievalService.getAggregates().toString();
 	}
 }
 

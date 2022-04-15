@@ -443,11 +443,12 @@ public class Connection
    * The two lists must have the same count.
    * An introduction can be found at <a href="https://code.kx.com/q4m3/5_Dictionaries/">https://code.kx.com/q4m3/5_Dictionaries/</a>
    */
-  public static class Dict{
+  public static class Dictionary
+  {
     /** Dict keys */
-    public Object x;
+    public Object keys;
     /** Dict values */
-    public Object y;
+    public Object values;
     /**
      * Create a representation of the KDB+ dictionary type, which is a 
      * mapping between keys and values
@@ -455,9 +456,10 @@ public class Connection
      * @param vals Values to store. Index of each value should match the corresponding associated key.
     *  Should be an array type when using multiple values.
      */
-    public Dict(Object keys,Object vals){
-      x=keys;
-      y=vals;
+    public Dictionary(Object keys, Object vals)
+    {
+      this.keys=keys;
+      this.values=vals;
     }
   }
   /**
@@ -473,12 +475,12 @@ public class Connection
     public Object[] columnValuesArrayOfArray;
     /**
      * Create a Flip (KDB+ table) from the values stored in a Dict.
-     * @param dict Values stored in the dict should be an array of Strings for the column names (keys), with an 
+     * @param dictionary Values stored in the dict should be an array of Strings for the column names (keys), with an
      * array of arrays for the column values
      */
-    public Result(Dict dict){
-      columnNames =(String[])dict.x;
-      columnValuesArrayOfArray =(Object[])dict.y;
+    public Result(Dictionary dictionary){
+      columnNames =(String[]) dictionary.keys;
+      columnValuesArrayOfArray =(Object[]) dictionary.values;
     }
     /**
      * Returns the column values given the column name
@@ -973,10 +975,10 @@ public class Connection
       return "func";
     }
     if(t==99)
-      return new Dict(r(),r());
+      return new Dictionary(r(),r());
     rBuffPos++;
     if(t==98)
-      return new Result((Dict)r());
+      return new Result((Dictionary)r());
     n=ri();
     switch(t){
       case 0:
@@ -1162,7 +1164,7 @@ public class Connection
       return 18;
     if (x instanceof Result)
       return 98;
-    if (x instanceof Dict)
+    if (x instanceof Dictionary)
       return 99;
     return 0;
   }
@@ -1194,8 +1196,8 @@ public class Connection
    * @throws UnsupportedEncodingException  If the named charset is not supported
    */
   public static int n(final Object x) throws UnsupportedEncodingException{
-    if (x instanceof Dict)
-      return n(((Dict)x).x);
+    if (x instanceof Dictionary)
+      return n(((Dictionary)x).keys);
     if (x instanceof Result)
       return n(((Result)x).columnValuesArrayOfArray[0]);
     return x instanceof char[]?new String((char[])x).getBytes(encoding).length:Array.getLength(x);
@@ -1209,7 +1211,7 @@ public class Connection
   public int nx(Object x) throws UnsupportedEncodingException{
     int type=t(x);
     if(type==99)
-      return 1+nx(((Dict)x).x)+nx(((Dict)x).y);
+      return 1+nx(((Dictionary)x).keys)+nx(((Dictionary)x).values);
     if(type==98)
       return 3+nx(((Result)x).columnNames)+nx(((Result)x).columnValuesArrayOfArray);
     if(type<0)
@@ -1291,9 +1293,9 @@ public class Connection
           return;
       }
     if(type==99){
-      Dict r=(Dict)x;
-      w(r.x);
-      w(r.y);
+      Dictionary r=(Dictionary)x;
+      w(r.keys);
+      w(r.values);
       return;
     }
     wBuff[wBuffPos++]=0;
@@ -1741,9 +1743,9 @@ public class Connection
   public static Result td(Object tbl) throws UnsupportedEncodingException{
     if(tbl instanceof Result)
       return (Result)tbl;
-    Dict d=(Dict)tbl;
-    Result a=(Result)d.x;
-    Result b=(Result)d.y;
+    Dictionary d=(Dictionary)tbl;
+    Result a=(Result)d.keys;
+    Result b=(Result)d.values;
     int m=n(a.columnNames);
     int n=n(b.columnNames);
     String[] x=new String[m+n];
@@ -1752,7 +1754,7 @@ public class Connection
     Object[] y=new Object[m+n];
     System.arraycopy(a.columnValuesArrayOfArray,0,y,0,m);
     System.arraycopy(b.columnValuesArrayOfArray,0,y,m,n);
-    return new Result(new Dict(x,y));
+    return new Result(new Dictionary(x,y));
   }
   /** 
    * @deprecated Prints x to {@code out} stream 
