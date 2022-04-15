@@ -10,7 +10,6 @@ import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
 import static org.springframework.web.bind.annotation.RequestMethod.POST;
 
 @RestController
@@ -35,8 +34,14 @@ public class PriceTimeSeriesController
 		if(request.getSymbol() == null || request.getSymbol().isEmpty())
 			logger.error("Time series price request's symbol cannot be null or an empty string.");
 
-		logger.info(String.format("Received request for time series prices of symbol: %s", request.getSymbol()));
-		return priceRetrievalService.getPrices().toString();
+		if(request.getStartDate() == null)
+			logger.error("Start date cannot be NULL.");
+
+		if(request.getEndDate() == null)
+			logger.error("End date cannot be NULL.");
+
+		logger.info(String.format("Received request for time series prices of symbol: %s with start date: %s and end date: %s", request.getSymbol(), request.getStartDate(), request.getEndDate()));
+		return priceRetrievalService.getPrices(request).toString();
 	}
 
 	@CrossOrigin
@@ -46,8 +51,14 @@ public class PriceTimeSeriesController
 		if(request.getSymbol() == null || request.getSymbol().isEmpty())
 			logger.error("Time series aggregation request's symbol cannot be null or an empty string.");
 
-		logger.info(String.format("Received request to aggregate prices for symbol: %s", request.getSymbol()));
-		return priceRetrievalService.getAggregates().toString();
+		if(request.getStartDate() == null)
+			logger.error("Start date cannot be NULL.");
+
+		if(request.getEndDate() == null)
+			logger.error("End date cannot be NULL.");
+
+		logger.info(String.format("Received request to aggregate prices for symbol: %s with start date: %s and end date: %s", request.getSymbol(), request.getStartDate(), request.getEndDate()));
+		return priceRetrievalService.getAggregates(request).toString();
 	}
 }
 

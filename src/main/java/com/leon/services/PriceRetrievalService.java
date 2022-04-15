@@ -2,6 +2,7 @@ package com.leon.services;
 
 import com.leon.model.PriceAggregation;
 import com.leon.model.PricePoint;
+import com.leon.model.TimeSeriesRequest;
 import kx.Connection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -9,7 +10,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import java.io.IOException;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -17,12 +17,6 @@ import java.util.List;
 public class PriceRetrievalService
 {
 	private static final Logger logger = LoggerFactory.getLogger(PriceRetrievalService.class);
-
-	@Value("${kdb.aggregate.query}")
-	String aggregate_query;
-
-	@Value("${kdb.price.query}")
-	String price_query;
 
 	@Value("${kdb.username}")
 	String username;
@@ -42,15 +36,16 @@ public class PriceRetrievalService
 		return new java.sql.Date(dateToConvert.getTime()).toLocalDate();
 	}
 
-	public List<PricePoint> getPrices()
+	public List<PricePoint> getPrices(TimeSeriesRequest request)
 	{
 		Connection connection = null;
 		List<PricePoint> pricePoints = new ArrayList<>();
+		String price_query = String.format("select from .basics.prices where symbols = `%s, dates >= %s, dates <= %s", request.getSymbol(), request.getStartDate(), request.getEndDate());
 		try
 		{
 			connection = new Connection(host, port, username + ":" + password, false);
 			logger.info(String.format("Connecting to %s on port: %d using username: %s and password: %s", host, port, username, password));
-			logger.info(String.format("Executing query: %s", price_query));
+			logger.info(String.format("Executing query:\n%s", price_query));
 			Connection.Result result = (Connection.Result) connection.invoke(price_query);
 			int symbolIndex = 0, dateIndex = 0, timeIndex = 0, priceIndex = 0, quantityIndex = 0;
 			for(int index = 0; index < result.columnNames.length; ++index)
@@ -95,7 +90,7 @@ public class PriceRetrievalService
 			try
 			{
 				connection.close();
-				logger.info("Closed connection after a total of " + pricePoints.size() + " record(s) were returned from KDB by executing the query:\n" + price_query);
+				logger.info("Closed connection after a total of " + pricePoints.size() + " record(s) were returned from KDB.");
 			}
 			catch(IOException ioe)
 			{
@@ -107,15 +102,16 @@ public class PriceRetrievalService
 
 	// Aggregated result sets returned by KDB contain both key values and data values in the same table so
 	// that you either need to use dictionary to traverse the result set or you prefix your query with 0!
-	public List<PriceAggregation> getAggregates()
+	public List<PriceAggregation> getAggregates(TimeSeriesRequest request)
 	{
 		Connection connection = null;
 		List<PriceAggregation> priceAggregations = new ArrayList<>();
+		String aggregate_query = String.format("select high: max prices, low: min prices, open: first prices, close: last prices by symbols, dates from .basics.prices where symbols = `%s, dates >= %s, dates <= %s", request.getSymbol(), request.getStartDate(), request.getEndDate());
 		try
 		{
 			connection = new Connection(host, port, username + ":" + password, false);
 			logger.info(String.format("Connecting to %s on port: %d using username: %s and password: %s", host, port, username, password));
-			logger.info(String.format("Executing query: %s", aggregate_query));
+			logger.info(String.format("Executing query:\n%s", aggregate_query));
 
 			final Object dictionary = connection.invoke(aggregate_query);
 			if (dictionary instanceof Connection.Dictionary)
@@ -177,7 +173,7 @@ public class PriceRetrievalService
 			try
 			{
 				connection.close();
-				logger.info("Closed connection after a total of " + priceAggregations.size() + " record(s) were returned from KDB by executing the query:\n" + aggregate_query);
+				logger.info("Closed connection after a total of " + priceAggregations.size() + " record(s) were returned from KDB.");
 			}
 			catch(IOException ioe)
 			{

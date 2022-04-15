@@ -1,13 +1,23 @@
 package com.leon.model;
 
-import java.time.LocalDate;
 import java.util.Objects;
 
 public class TimeSeriesRequest
 {
 	private String symbol;
-	private LocalDate startDate;
-	private LocalDate endDate;
+	private String startDate;
+	private String endDate;
+
+	public TimeSeriesRequest(String symbol, String startDate, String endDate)
+	{
+		this.symbol = symbol;
+		this.startDate = startDate;
+		this.endDate = endDate;
+	}
+
+	public TimeSeriesRequest()
+	{
+	}
 
 	public String getSymbol()
 	{
@@ -19,22 +29,22 @@ public class TimeSeriesRequest
 		this.symbol = symbol;
 	}
 
-	public LocalDate getStartDate()
+	public String getStartDate()
 	{
 		return startDate;
 	}
 
-	public void setStartDate(LocalDate startDate)
+	public void setStartDate(String startDate)
 	{
 		this.startDate = startDate;
 	}
 
-	public LocalDate getEndDate()
+	public String getEndDate()
 	{
 		return endDate;
 	}
 
-	public void setEndDate(LocalDate endDate)
+	public void setEndDate(String endDate)
 	{
 		this.endDate = endDate;
 	}
