@@ -2,29 +2,102 @@ package com.leon.services;
 
 import com.leon.model.PricePoint;
 import kx.Connection;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import java.io.IOException;
-import java.sql.Date;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 @Service
 public class PriceTimeSeriesCacheService
 {
+	private static final Logger logger = LoggerFactory.getLogger(PriceTimeSeriesCacheService.class);
+
+	@Value("${kdb.aggregate.query}")
+	String aggregate_query;
+
+	@Value("${kdb.price.query}")
+	String price_query;
+
 	@Value("${kdb.username}")
 	String username;
 
 	@Value("${kdb.password}")
-	String password;
+	private String password;
 
 	@Value("${kdb.port}")
-	int port = 8080;
+	private int port;
 
 	@Value("${kdb.hostname}")
-	String host = "localhost";
+	private String host;
 
-	public List<PricePoint> getPrices(String symbol)
+	public List<PricePoint> getPrices()
+	{
+		Connection connection = null;
+		List<PricePoint> pricePoints = new ArrayList<>();
+		try
+		{
+			connection = new Connection(host, port, username + ":" + password, false);
+			logger.info(String.format("Connecting to %s on port: %d using username: %s and password: %s", host, port, username, password));
+			logger.info(String.format("Executing query: %s", price_query));
+			Connection.Result result = (Connection.Result) connection.invoke(price_query);
+			int symbolIndex = 0, dateIndex = 0, timeIndex = 0, priceIndex = 0, quantityIndex = 0;
+			for(int index = 0; index < result.columnNames.length; ++index)
+			{
+				String key = result.columnNames[index];
+				if(key.equalsIgnoreCase("dates"))
+					dateIndex = index;
+				else if (key.equalsIgnoreCase("symbols"))
+					symbolIndex = index;
+				else if (key.equalsIgnoreCase("times"))
+					timeIndex = index;
+				else if (key.equalsIgnoreCase("qtys"))
+					quantityIndex = index;
+				else if (key.equalsIgnoreCase("prices"))
+					priceIndex = index;
+			}
+
+			String[] symbolValues = (String[]) result.columnValuesArrayOfArray[symbolIndex];
+			Object[] dateValues = (Object[]) result.columnValuesArrayOfArray[dateIndex];
+			long[] priceValues = (long[]) result.columnValuesArrayOfArray[priceIndex];
+			java.sql.Time[] timeValues = (java.sql.Time[]) result.columnValuesArrayOfArray[timeIndex];
+			long[] quantityValues = (long[]) result.columnValuesArrayOfArray[quantityIndex];
+
+			logger.info("The first ten prices retrieved from KDB...");
+			for(int index = 0; index < symbolValues.length; ++index)
+			{
+				if(index <= 10)
+				logger.info(String.format("Symbol: %s, date: %s, price: %d, time:%s, quantity:%d",
+						symbolValues[index], dateValues[index].toString(), priceValues[index], timeValues[index], quantityValues[index]));
+
+				pricePoints.add(new PricePoint(symbolValues[index], dateValues[index].toString(),
+						timeValues[index].toString(), priceValues[index], quantityValues[index]));
+			}
+		}
+		catch(Exception e)
+		{
+			logger.error(e.getLocalizedMessage());
+			e.printStackTrace();
+		}
+		finally
+		{
+			try
+			{
+				connection.close();
+				logger.info("Closed connection after executing query: " + price_query);
+			}
+			catch(IOException ioe)
+			{
+				ioe.printStackTrace();
+			}
+			return pricePoints;
+		}
+	}
+
+	public List<PricePoint> getAggregates()
 	{
 		Connection connection = null;
 		List<PricePoint> pricePoints = new ArrayList<>();
@@ -32,74 +105,52 @@ public class PriceTimeSeriesCacheService
 		try
 		{
 			connection = new Connection(host, port, username + ":" + password, false);
+			logger.info(String.format("Connecting to %s on port: %d using username: %s and password: %s", host, port, username, password));
+			logger.info(String.format("Executing query: %s", aggregate_query));
 
-			// TODO Convert into getPrices parameters
-			String[] snapTime = new String[] {"13:30:00.000", "13:30:18.7555"};
-			Date[] snapDate = new Date[] {Date.valueOf("2022-03-01"), Date.valueOf("2022-03-01")};
-			String[] symbols = new String[] {"ETC", "BTC"};
-			String[] columns = new String[] {"bid", "ask"};
-
-			Connection.Dict dictionary = new Connection.Dict(new String[] {"symbols", "snapDate", "snapTime", "columns"}, new Object[] { symbols, snapDate, snapTime, columns});
-			Connection.Result result = (Connection.Result) connection.invoke("getPrices", dictionary);
-			int symbolIndex = 0, dateIndex = 0, timeIndex = 0, bidIndex = 0, askIndex = 0, highIndex = 0, lowIndex = 0, closeIndex = 0, openIndex = 0;
-
-			for(int index = 0; index < result.columnNames.length; ++index)
+			final Object res = connection.invoke(aggregate_query);
+			if (res instanceof Connection.Dict)
 			{
-				String key = result.columnNames[index];
-				if(key.equalsIgnoreCase("date"))
-					dateIndex = index;
-				else if (key.equalsIgnoreCase("time"))
-					timeIndex = index;
-				else if (key.equalsIgnoreCase("symbol"))
-					symbolIndex = index;
-				else if (key.equalsIgnoreCase("bid"))
-					bidIndex = index;
-				else if (key.equalsIgnoreCase("ask"))
-					askIndex = index;
-				else if (key.equalsIgnoreCase("high"))
-					highIndex = index;
-				else if (key.equalsIgnoreCase("low"))
-					lowIndex = index;
-				else if (key.equalsIgnoreCase("close"))
-					closeIndex = index;
-				else if (key.equalsIgnoreCase("open"))
-					openIndex = index;
-			}
+				final Connection.Dict dict = (Connection.Dict) res;
+				if ((dict.x instanceof Connection.Result) && (dict.y instanceof Connection.Result))
+				{
+					int symbolIndex = 0, dateIndex = 0, highIndex = 0, lowIndex = 0, closeIndex = 0, openIndex = 0;
+					String[] keyNames = ((Connection.Result) dict.x).columnNames;
+					for(int columnIndex = 0; columnIndex < keyNames.length; ++columnIndex)
+					{
+						if(keyNames[columnIndex].equalsIgnoreCase("dates"))
+							dateIndex = columnIndex;
+						else if (keyNames[columnIndex].equalsIgnoreCase("symbols"))
+							symbolIndex = columnIndex;
 
-			String[] symbolValues = (String[]) result.columnValuesArrayOfArray[symbolIndex];
-			Object[] dateValues = (Object[]) result.columnValuesArrayOfArray[dateIndex];
-			Object[] timeValues = (Object[]) result.columnValuesArrayOfArray[timeIndex];
-			double[] bidValues = (double[]) result.columnValuesArrayOfArray[bidIndex];
-			double[] askValues = (double[]) result.columnValuesArrayOfArray[askIndex];
-			double[] closeValues = (double[]) result.columnValuesArrayOfArray[closeIndex];
-			double[] openValues = (double[]) result.columnValuesArrayOfArray[openIndex];
-			double[] highValues = (double[]) result.columnValuesArrayOfArray[highIndex];
-			double[] lowValues = (double[]) result.columnValuesArrayOfArray[lowIndex];
+						logger.info("column names: " + keyNames[columnIndex] + ", dateIndex: " + dateIndex + ", symbolIndex: " + symbolIndex);
+					}
 
-			for(int index = 0; index < symbolValues.length; ++index)
-			{
-				Connection.Timespan timespan = (Connection.Timespan) timeValues[index];
+					String[] symbolValues = (String[]) ((Connection.Result) dict.x).columnValuesArrayOfArray[symbolIndex];
+					Arrays.stream(symbolValues).forEach(logger::info);
+					Object[] dateValues = (Object[]) ((Connection.Result) dict.x).columnValuesArrayOfArray[dateIndex];
+					Arrays.stream(dateValues).forEach(x -> logger.info(String.valueOf(x)));
 
-				System.out.println(String.format("Symbol: %s, date: %s, time: %s, ask: %f, bid: %f, close: %f, open:%f, high:%f, low:%f",
-						symbolValues[index], dateValues[index].toString(), timespan.toString(), askValues[index],
-						bidValues[index], closeValues[index], openValues[index], highValues[index], lowValues[index]));
 
-				PricePoint pricePoint = new PricePoint();
+					String[] dataNames = ((Connection.Result) dict.y).columnNames;
+					for(int columnIndex = 0; columnIndex < dataNames.length; ++columnIndex)
+					{
+						// TODO
+					}
+				}
 			}
 		}
-		catch(Connection.KException ke)
+		catch(Exception e)
 		{
-			ke.printStackTrace();
-		}
-		catch(IOException ioe)
-		{
-			ioe.printStackTrace();
+			logger.error(e.getLocalizedMessage());
+			e.printStackTrace();
 		}
 		finally
 		{
 			try
 			{
 				connection.close();
+				logger.info("Closed connection after executing query: " + aggregate_query);
 			}
 			catch(IOException ioe)
 			{
@@ -109,3 +160,4 @@ public class PriceTimeSeriesCacheService
 		}
 	}
 }
+
