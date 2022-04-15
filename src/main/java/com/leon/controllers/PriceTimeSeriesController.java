@@ -14,28 +14,29 @@ import org.springframework.web.bind.annotation.RestController;
 import static org.springframework.web.bind.annotation.RequestMethod.POST;
 
 @RestController
+@RequestMapping("/price")
 public class PriceTimeSeriesController
 {
 	private static final Logger logger = LoggerFactory.getLogger(PriceTimeSeriesController.class);
 	@Autowired
-	PriceRetrievalService PriceRetrievalService;
+	PriceRetrievalService priceRetrievalService;
 
 	@CrossOrigin
 	@RequestMapping("/heartbeat")
 	String heartbeat()
 	{
-		return "Here I am!";
+		return "I am here!";
 	}
 
 	@CrossOrigin
-	@RequestMapping(value = "/prices", method={POST}, consumes=MediaType.APPLICATION_JSON_VALUE, produces=MediaType.APPLICATION_JSON_VALUE )
+	@RequestMapping(value = "/time-series", method={POST}, consumes=MediaType.APPLICATION_JSON_VALUE, produces=MediaType.APPLICATION_JSON_VALUE )
 	String getPrices(@RequestBody TimeSeriesRequest request)
 	{
 		if(request.getSymbol() == null || request.getSymbol().isEmpty())
 			logger.error("Time series price request's symbol cannot be null or an empty string.");
 
 		logger.info(String.format("Received request for time series prices of symbol: %s", request.getSymbol()));
-		return PriceRetrievalService.getPrices().toString();
+		return priceRetrievalService.getPrices().toString();
 	}
 
 	@CrossOrigin
@@ -46,7 +47,7 @@ public class PriceTimeSeriesController
 			logger.error("Time series aggregation request's symbol cannot be null or an empty string.");
 
 		logger.info(String.format("Received request to aggregate prices for symbol: %s", request.getSymbol()));
-		return PriceRetrievalService.getAggregates().toString();
+		return priceRetrievalService.getAggregates().toString();
 	}
 }
 

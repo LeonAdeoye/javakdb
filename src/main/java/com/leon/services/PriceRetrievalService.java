@@ -8,6 +8,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import java.io.IOException;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -33,6 +35,12 @@ public class PriceRetrievalService
 
 	@Value("${kdb.hostname}")
 	private String host;
+
+
+	private static LocalDate convertToLocalDate(java.sql.Date dateToConvert)
+	{
+		return new java.sql.Date(dateToConvert.getTime()).toLocalDate();
+	}
 
 	public List<PricePoint> getPrices()
 	{
@@ -61,7 +69,7 @@ public class PriceRetrievalService
 			}
 
 			String[] symbolValues = (String[]) result.columnValuesArrayOfArray[symbolIndex];
-			Object[] dateValues = (Object[]) result.columnValuesArrayOfArray[dateIndex];
+			java.sql.Date[] dateValues = (java.sql.Date[]) result.columnValuesArrayOfArray[dateIndex];
 			long[] priceValues = (long[]) result.columnValuesArrayOfArray[priceIndex];
 			java.sql.Time[] timeValues = (java.sql.Time[]) result.columnValuesArrayOfArray[timeIndex];
 			long[] quantityValues = (long[]) result.columnValuesArrayOfArray[quantityIndex];
@@ -71,10 +79,10 @@ public class PriceRetrievalService
 			{
 				if(index < 5)
 				logger.info(String.format("Symbol: %s, date: %s, price: %d, time:%s, quantity:%d",
-						symbolValues[index], dateValues[index].toString(), priceValues[index], timeValues[index], quantityValues[index]));
+						symbolValues[index], dateValues[index].toString(), priceValues[index], timeValues[index].toLocalTime(), quantityValues[index]));
 
-				pricePoints.add(new PricePoint(symbolValues[index], dateValues[index].toString(),
-						timeValues[index].toString(), priceValues[index], quantityValues[index]));
+				pricePoints.add(new PricePoint(symbolValues[index], convertToLocalDate(dateValues[index]),
+						timeValues[index].toLocalTime(), priceValues[index], quantityValues[index]));
 			}
 		}
 		catch(Exception e)
@@ -140,7 +148,7 @@ public class PriceRetrievalService
 					}
 
 					String[] symbolValues = (String[]) ((Connection.Result) dict.keys).columnValuesArrayOfArray[symbolIndex];
-					Object[] dateValues = (Object[]) ((Connection.Result) dict.keys).columnValuesArrayOfArray[dateIndex];
+					java.sql.Date[] dateValues = (java.sql.Date[]) ((Connection.Result) dict.keys).columnValuesArrayOfArray[dateIndex];
 					long[] highValues = (long[]) ((Connection.Result) dict.values).columnValuesArrayOfArray[highIndex];
 					long[] lowValues = (long[]) ((Connection.Result) dict.values).columnValuesArrayOfArray[lowIndex];
 					long[] closeValues = (long[]) ((Connection.Result) dict.values).columnValuesArrayOfArray[closeIndex];
@@ -154,7 +162,7 @@ public class PriceRetrievalService
 									symbolValues[index], dateValues[index].toString(), highValues[index], lowValues[index], closeValues[index], openValues[index]));
 
 						priceAggregations.add(new PriceAggregation(highValues[index], lowValues[index],
-								closeValues[index], openValues[index], symbolValues[index], dateValues[index].toString()));
+								closeValues[index], openValues[index], symbolValues[index], convertToLocalDate(dateValues[index])));
 					}
 				}
 			}

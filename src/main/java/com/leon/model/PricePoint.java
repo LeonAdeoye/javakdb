@@ -1,14 +1,17 @@
 package com.leon.model;
 
-public class PricePoint
+import java.time.LocalDate;
+import java.time.LocalTime;
+
+public final class PricePoint
 {
 	private String symbol;
-	private String date;
-	private String time;
+	private LocalDate date;
+	private LocalTime time;
 	private long price;
 	private long qty;
 
-	public PricePoint(String symbol, String date, String time, long price, long qty)
+	public PricePoint(String symbol, LocalDate date, LocalTime time, long price, long qty)
 	{
 		this.symbol = symbol;
 		this.date = date;

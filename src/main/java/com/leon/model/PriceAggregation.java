@@ -1,15 +1,17 @@
 package com.leon.model;
 
-public class PriceAggregation
+import java.time.LocalDate;
+
+public final class PriceAggregation
 {
 	private long high;
 	private long low;
 	private long close;
 	private long open;
 	private String symbol;
-	private String date;
+	private LocalDate date;
 
-	public PriceAggregation(long high, long low, long close, long open, String symbol, String date)
+	public PriceAggregation(long high, long low, long close, long open, String symbol, LocalDate date)
 	{
 		this.high = high;
 		this.low = low;
