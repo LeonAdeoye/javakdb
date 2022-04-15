@@ -1,6 +1,6 @@
 <configuration scan="true" scanPeriod="300 seconds" >
     <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>../logs/validation-service.log</file>
+        <file>../logs/timeSeries-service.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
             <fileNamePattern>timeSeries-service.log.%d{yyyy-MM-dd}</fileNamePattern>
             <maxHistory>8</maxHistory>
